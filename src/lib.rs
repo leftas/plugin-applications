@@ -72,13 +72,16 @@ pub fn handler(selection: Match, state: &State) -> HandleResult {
             .arg("-c")
             .arg(&entry.exec)
             .current_dir(if let Some(path) = &entry.path {
-                if path.exists() { path } else { current_dir }
+                if path.exists() {
+                    path
+                } else {
+                    current_dir
+                }
             } else {
                 current_dir
             })
             .spawn()
-    }
-    {
+    } {
         eprintln!("Error running desktop entry: {}", why);
     }
 
@@ -130,7 +133,7 @@ pub fn get_matches(input: RString, state: &State) -> RVec<Match> {
 
             // prioritize actions
             if entry.desc.is_some() {
-                score = score * 2;
+                score *= 2;
             }
 
             if score > 0 {
