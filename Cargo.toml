@@ -17,8 +17,8 @@ crate-type = ["cdylib"]
 
 [dependencies]
 anyrun-plugin = "0.1.0"
-abi_stable = "0.11.1"
+abi_stable = "0.11.3"
 sublime_fuzzy = "0.7.0"
 fuzzy-matcher = "0.3.7"
-ron = "0.8.0"
-serde = { version = "1.0.159", features = ["derive"] }
+ron = "0.8.1"
+serde = { version = "1.0.203", features = ["derive"] }
