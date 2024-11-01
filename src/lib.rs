@@ -4,15 +4,8 @@ use anyrun_plugin::{anyrun_interface::HandleResult, *};
 use fuzzy_matcher::FuzzyMatcher;
 use scrubber::DesktopEntry;
 use serde::Deserialize;
-use std::{env, fs, path::PathBuf, process::Command};
+use std::path::PathBuf;
 use tokio::{runtime::Runtime, task::JoinHandle};
-
-use abi_stable::std_types::{ROption, RString, RVec};
-use fuzzy_matcher::FuzzyMatcher;
-use serde::Deserialize;
-
-use anyrun_plugin::{*, anyrun_interface::HandleResult};
-use scrubber::DesktopEntry;
 
 use crate::execution_stats::ExecutionStats;
 
@@ -147,11 +140,11 @@ pub fn init(config_dir: RString) -> State {
         Vec::new()
     });
 
-    State { config, entries, execution_stats }
     State {
         config,
-        entries,
         runtime: Runtime::new().expect("Failed to create tokio runtime"),
+        entries,
+        execution_stats
     }
 }
 
