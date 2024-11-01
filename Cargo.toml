@@ -22,3 +22,4 @@ sublime_fuzzy = "0.7.0"
 fuzzy-matcher = "0.3.7"
 ron = "0.8.1"
 serde = { version = "1.0.203", features = ["derive"] }
+tokio = { version = "1.40.0", features = ["rt-multi-thread"] }

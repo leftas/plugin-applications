@@ -1,4 +1,11 @@
 use std::{env, fs, process::Command};
+use abi_stable::std_types::{ROption, RString, RVec};
+use anyrun_plugin::{anyrun_interface::HandleResult, *};
+use fuzzy_matcher::FuzzyMatcher;
+use scrubber::DesktopEntry;
+use serde::Deserialize;
+use std::{env, fs, path::PathBuf, process::Command};
+use tokio::{runtime::Runtime, task::JoinHandle};
 
 use abi_stable::std_types::{ROption, RString, RVec};
 use fuzzy_matcher::FuzzyMatcher;
@@ -42,6 +49,7 @@ impl Default for Config {
 
 pub struct State {
     config: Config,
+    runtime: Runtime,
     entries: Vec<(DesktopEntry, u64)>,
     execution_stats: Option<ExecutionStats>,
 }
@@ -50,6 +58,24 @@ mod scrubber;
 mod execution_stats;
 
 const SENSIBLE_TERMINALS: &[&str] = &["alacritty", "foot", "kitty", "wezterm", "wterm"];
+
+fn spawn_process(state: &State, term: &str, first_arg: &str, exec: &String, path: Option<&PathBuf>) -> Result<JoinHandle<()>, String> {
+    let current_dir = &env::current_dir().unwrap();
+
+    let mut proc = match Command::new(term).arg(first_arg).arg(exec).current_dir(match path {
+        Some(path) => path,
+        None => current_dir
+    }).spawn() {
+       Ok(out) => out,
+       Err(why) => {
+           return Err(why.to_string());
+       }
+    };
+
+    Ok(state.runtime.spawn(async move {
+        proc.wait().expect("Failed to wait?");
+    })) 
+}
 
 #[handler]
 pub fn handler(selection: Match, state: &State) -> HandleResult {
@@ -73,39 +99,21 @@ pub fn handler(selection: Match, state: &State) -> HandleResult {
     if entry.term {
         match &state.config.terminal {
             Some(term) => {
-                if let Err(why) = Command::new(term).arg("-e").arg(&entry.exec).spawn() {
+                if let Err(why) = spawn_process(state, term, "-e", &entry.exec, None) {
                     eprintln!("Error running desktop entry: {}", why);
                 }
             }
             None => {
                 for term in SENSIBLE_TERMINALS {
-                    if Command::new(term)
-                        .arg("-e")
-                        .arg(&entry.exec)
-                        .spawn()
-                        .is_ok()
-                    {
+                    let cmd = spawn_process(state, term, "-e", &entry.exec, None);
+                    if cmd.is_ok() {
                         break;
                     }
                 }
             }
         }
     } else if let Err(why) = {
-        let current_dir = &env::current_dir().unwrap();
-
-        Command::new("sh")
-            .arg("-c")
-            .arg(&entry.exec)
-            .current_dir(if let Some(path) = &entry.path {
-                if path.exists() {
-                    path
-                } else {
-                    current_dir
-                }
-            } else {
-                current_dir
-            })
-            .spawn()
+        spawn_process(state, "sh", "-c", &entry.exec, entry.path.as_ref())
     } {
         eprintln!("Error running desktop entry: {}", why);
     }
@@ -140,6 +148,11 @@ pub fn init(config_dir: RString) -> State {
     });
 
     State { config, entries, execution_stats }
+    State {
+        config,
+        entries,
+        runtime: Runtime::new().expect("Failed to create tokio runtime"),
+    }
 }
 
 #[get_matches]
